@@ -52,12 +52,13 @@ jobs:
       - name: Build frida-server android-arm64
         run: |
           cd frida
-          make fnida-server-android-arm64 -j$(nproc) 2>&1 | tail -30
-          find . -name "fnida-server*" -path "*bin*" -o -name "frida-server*" -path "*bin*" | head -5
+          ./configure --host=android-arm64
+          make -j$(nproc) 2>&1 | tail -30
+          find build -name "*server*" -type f | head -5
 
       - name: Collect binary
         run: |
-          B=$(find frida/build -name "fnida-server" -type f | head -1)
+          B=$(find frida/build -name "fnida-server" -type f | grep -E "bin/" | head -1)
           [ -z "$B" ] && B=$(find frida/build -name "*server*" -type f | grep -E "bin/" | head -1)
           echo "found: $B"
           cp "$B" ./fnida-server-arm64
