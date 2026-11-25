@@ -38,6 +38,10 @@ jobs:
           X "frida-compiler" "fnida-compiler"
           X "frida-gadget" "fnida-gadget"
           X "re\.frida\." "re.fnida."
+          X "get_frida_agent" "get_fnida_agent"
+          X "get_frida_helper" "get_fnida_helper"
+          X "get_frida_gadget" "get_fnida_gadget"
+          X "get_frida_compiler" "get_fnida_compiler"
           X "re/frida/" "re/fnida/"
           X "package re.frida" "package re.fnida"
           X '"gmain"' '"gmxin"'
