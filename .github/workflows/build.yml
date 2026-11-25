@@ -42,10 +42,10 @@ jobs:
           X "get_frida_gadget" "get_fnida_gadget"
           X "get_frida_compiler" "get_fnida_compiler"
           X '"gmain"' '"gmxin"'
+          X '"gdbus"' '"gdbxs"'
           X '"frida-agent-container"' '"fnida-agent-container"'
           X '"frida-android-helper"' '"fnida-android-helper"'
           X 'options.name = "frida"' 'options.name = "fnida"'
-          X '"gdbus"' '"gdbxs"'
           for PAT in frida-agent frida-helper frida-server frida-compiler frida-gadget; do
             while IFS= read -r -d '' f; do
               d=$(dirname "$f"); b=$(basename "$f")
@@ -53,6 +53,19 @@ jobs:
               [ "$b" != "$nb" ] && mv "$f" "$d/$nb"
             done < <(find . -path ./.git -prune -o -name "*$PAT*" -print0 2>/dev/null)
           done
+          cat > /tmp/fixdex.py << 'INNEREOF'
+          import sys, pathlib, zlib, hashlib
+          for p in sys.argv[1:]:
+              f = pathlib.Path(p)
+              b = bytearray(f.read_bytes())
+              if len(b) >= 32 and bytes(b[:4]) == b'dex\n':
+                  b[12:32] = hashlib.sha1(bytes(b[32:])).digest()
+                  b[8:12] = (zlib.adler32(bytes(b[12:])) & 0xFFFFFFFF).to_bytes(4, 'little')
+                  f.write_bytes(bytes(b))
+                  print('dex checksum fixed:', p)
+          INNEREOF
+          find . -name "*.dex" -type f | xargs -r python3 /tmp/fixdex.py
+
       - name: Install Android NDK r29
         run: |
           curl -sSL -o /tmp/ndk.zip https://dl.google.com/android/repository/android-ndk-r29-linux.zip
