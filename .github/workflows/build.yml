@@ -26,7 +26,7 @@ jobs:
           git config --global --add safe.directory '*'
           git clone --depth 1 --branch 17.24.3 --recurse-submodules --shallow-submodules -j4 https://github.com/frida/frida.git
 
-      - name: Patch anti-detection strings (repo-wide, keep self-consistent)
+      - name: Patch anti-detection strings
         run: |
           cd frida
           X() { grep -rl --exclude-dir=.git "$1" . 2>/dev/null | xargs -r sed -i "s/$1/$2/g"; }
@@ -35,30 +35,13 @@ jobs:
           X "frida-agent" "fnida-agent"
           X "frida-helper" "fnida-helper"
           X "frida-server" "fnida-server"
-          # NOTE: frida_agent_main is valac-generated from namespace Frida.Agent; renaming breaks build. Left intact.
-          X "re\.frida\." "re.fnida."
-          # blob accessor symbols are derived from renamed embedded file names
-          X "get_frida_agent" "get_fnida_agent"
-          X "get_frida_helper" "get_fnida_helper"
-          X "get_frida_gadget" "get_fnida_gadget"
-          X "get_frida_compiler" "get_fnida_compiler"
-          X "re\/frida\/" "re\/fnida\/"
-          X "package re.frida" "package re.fnida"
-          # binary-patch prebuilt dex (equal-length replace keeps dex string pool valid)
-          find . -name "*.dex" -type f | xargs -r python3 -c "
-import sys, pathlib
-for p in sys.argv[1:]:
-    f = pathlib.Path(p)
-    b = f.read_bytes()
-    b = b.replace(b're/frida/', b're/fnida/').replace(b're.frida', b're.fnida')
-    f.write_bytes(b)
-    print('dex patched:', p)
-"
           X "frida-compiler" "fnida-compiler"
           X "frida-gadget" "fnida-gadget"
+          X "re\.frida\." "re.fnida."
+          X "re/frida/" "re/fnida/"
+          X "package re.frida" "package re.fnida"
           X '"gmain"' '"gmxin"'
           X '"gdbus"' '"gdbxs"'
-          # rename physical files to match renamed references
           for PAT in frida-agent frida-helper frida-server frida-compiler frida-gadget; do
             while IFS= read -r -d '' f; do
               d=$(dirname "$f"); b=$(basename "$f")
@@ -66,7 +49,16 @@ for p in sys.argv[1:]:
               [ "$b" != "$nb" ] && mv "$f" "$d/$nb"
             done < <(find . -path ./.git -prune -o -name "*$PAT*" -print0 2>/dev/null)
           done
-          echo "verify:"; grep -rn "fnida-server-android" Makefile | head -2
+          cat > /tmp/patch_dex.py << 'PYEOF'
+          import sys, pathlib
+          for p in sys.argv[1:]:
+              f = pathlib.Path(p)
+              b = f.read_bytes()
+              b = b.replace(b're/frida/', b're/fnida/').replace(b're.frida', b're.fnida')
+              f.write_bytes(b)
+              print('dex patched:', p)
+          PYEOF
+          find . -name "*.dex" -type f | xargs -r python3 /tmp/patch_dex.py
 
       - name: Install Android NDK r29
         run: |
@@ -79,7 +71,6 @@ for p in sys.argv[1:]:
           cd frida
           ./configure --host=android-arm64
           make -j$(nproc) 2>&1 | tail -30
-          find build -name "*server*" -type f | head -5
 
       - name: Collect binary
         run: |
