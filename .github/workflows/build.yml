@@ -35,7 +35,7 @@ jobs:
           X "frida-agent" "fnida-agent"
           X "frida-helper" "fnida-helper"
           X "frida-server" "fnida-server"
-          X "frida_agent_main" "fnida_agent_main"
+          # NOTE: frida_agent_main is valac-generated from namespace Frida.Agent; renaming breaks build. Left intact.
           X "re\.frida\." "re.fnida."
           X '"gmain"' '"gmxin"'
           X '"gdbus"' '"gdbxs"'
