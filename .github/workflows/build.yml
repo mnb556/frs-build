@@ -54,13 +54,21 @@ jobs:
             done < <(find . -path ./.git -prune -o -name "*$PAT*" -print0 2>/dev/null)
           done
           cat > /tmp/patch_dex.py << 'PYEOF'
-          import sys, pathlib
+          import sys, pathlib, zlib, hashlib
           for p in sys.argv[1:]:
               f = pathlib.Path(p)
-              b = f.read_bytes()
-              b = b.replace(b're/frida/', b're/fnida/').replace(b're.frida', b're.fnida')
-              f.write_bytes(b)
-              print('dex patched:', p)
+              b = bytearray(f.read_bytes())
+              b = bytearray(bytes(b).replace(b're/frida/', b're/fnida/').replace(b're.frida', b're.fnida'))
+              if len(b) >= 32 and bytes(b[:4]) == b'dex
+':
+                  sig = hashlib.sha1(bytes(b[32:])).digest()
+                  b[12:32] = sig
+                  cks = zlib.adler32(bytes(b[12:])) & 0xFFFFFFFF
+                  b[8:12] = cks.to_bytes(4, 'little')
+                  f.write_bytes(bytes(b))
+                  print('dex patched+checksum fixed:', p)
+              else:
+                  print('skip non-dex:', p)
           PYEOF
           find . -name "*.dex" -type f | xargs -r python3 /tmp/patch_dex.py
 
