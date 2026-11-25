@@ -42,10 +42,12 @@ jobs:
           X "get_frida_helper" "get_fnida_helper"
           X "get_frida_gadget" "get_fnida_gadget"
           X "get_frida_compiler" "get_fnida_compiler"
+          X "frida-compiler" "fnida-compiler"
+          X "frida-gadget" "fnida-gadget"
           X '"gmain"' '"gmxin"'
           X '"gdbus"' '"gdbxs"'
           # rename physical files to match renamed references
-          for PAT in frida-agent frida-helper frida-server; do
+          for PAT in frida-agent frida-helper frida-server frida-compiler frida-gadget; do
             while IFS= read -r -d '' f; do
               d=$(dirname "$f"); b=$(basename "$f")
               nb=${b//$PAT/${PAT/frida/fnida}}
