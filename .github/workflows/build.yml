@@ -38,12 +38,12 @@ jobs:
           X "frida-compiler" "fnida-compiler"
           X "frida-gadget" "fnida-gadget"
           X "re\.frida\." "re.fnida."
+          X "re/frida/" "re/fnida/"
+          X "package re.frida" "package re.fnida"
           X "get_frida_agent" "get_fnida_agent"
           X "get_frida_helper" "get_fnida_helper"
           X "get_frida_gadget" "get_fnida_gadget"
           X "get_frida_compiler" "get_fnida_compiler"
-          X "re/frida/" "re/fnida/"
-          X "package re.frida" "package re.fnida"
           X '"gmain"' '"gmxin"'
           X '"gdbus"' '"gdbxs"'
           for PAT in frida-agent frida-helper frida-server frida-compiler frida-gadget; do
@@ -53,23 +53,20 @@ jobs:
               [ "$b" != "$nb" ] && mv "$f" "$d/$nb"
             done < <(find . -path ./.git -prune -o -name "*$PAT*" -print0 2>/dev/null)
           done
-          cat > /tmp/patch_dex.py << 'PYEOF'
+          cat > /tmp/patch_dex.py << 'PYEOF2'
           import sys, pathlib, zlib, hashlib
           for p in sys.argv[1:]:
               f = pathlib.Path(p)
-              b = bytearray(f.read_bytes())
-              b = bytearray(bytes(b).replace(b're/frida/', b're/fnida/').replace(b're.frida', b're.fnida'))
-              if len(b) >= 32 and bytes(b[:4]) == b'dex
-':
-                  sig = hashlib.sha1(bytes(b[32:])).digest()
-                  b[12:32] = sig
-                  cks = zlib.adler32(bytes(b[12:])) & 0xFFFFFFFF
-                  b[8:12] = cks.to_bytes(4, 'little')
+              raw = f.read_bytes()
+              b = bytearray(raw.replace(b're/frida/', b're/fnida/').replace(b're.frida', b're.fnida'))
+              if len(b) >= 32 and bytes(b[:4]) == b'dex\n':
+                  b[12:32] = hashlib.sha1(bytes(b[32:])).digest()
+                  b[8:12] = (zlib.adler32(bytes(b[12:])) & 0xFFFFFFFF).to_bytes(4, 'little')
                   f.write_bytes(bytes(b))
                   print('dex patched+checksum fixed:', p)
               else:
                   print('skip non-dex:', p)
-          PYEOF
+          PYEOF2
           find . -name "*.dex" -type f | xargs -r python3 /tmp/patch_dex.py
 
       - name: Install Android NDK r29
