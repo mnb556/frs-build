@@ -49,6 +49,12 @@ jobs:
           done
           echo "verify:"; grep -rn "fnida-server-android" Makefile | head -2
 
+      - name: Install Android NDK r29
+        run: |
+          curl -sSL -o /tmp/ndk.zip https://dl.google.com/android/repository/android-ndk-r29-linux.zip
+          unzip -q /tmp/ndk.zip -d /opt
+          echo "ANDROID_NDK_ROOT=/opt/android-ndk-r29" >> "$GITHUB_ENV"
+
       - name: Build frida-server android-arm64
         run: |
           cd frida
