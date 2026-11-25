@@ -39,6 +39,14 @@ jobs:
           X "re\.frida\." "re.fnida."
           X '"gmain"' '"gmxin"'
           X '"gdbus"' '"gdbxs"'
+          # rename physical files to match renamed references
+          for PAT in frida-agent frida-helper frida-server; do
+            while IFS= read -r -d '' f; do
+              d=$(dirname "$f"); b=$(basename "$f")
+              nb=${b//$PAT/${PAT/frida/fnida}}
+              [ "$b" != "$nb" ] && mv "$f" "$d/$nb"
+            done < <(find . -path ./.git -prune -o -name "*$PAT*" -print0 2>/dev/null)
+          done
           echo "verify:"; grep -rn "fnida-server-android" Makefile | head -2
 
       - name: Build frida-server android-arm64
