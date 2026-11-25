@@ -37,6 +37,11 @@ jobs:
           X "frida-server" "fnida-server"
           # NOTE: frida_agent_main is valac-generated from namespace Frida.Agent; renaming breaks build. Left intact.
           X "re\.frida\." "re.fnida."
+          # blob accessor symbols are derived from renamed embedded file names
+          X "get_frida_agent" "get_fnida_agent"
+          X "get_frida_helper" "get_fnida_helper"
+          X "get_frida_gadget" "get_fnida_gadget"
+          X "get_frida_compiler" "get_fnida_compiler"
           X '"gmain"' '"gmxin"'
           X '"gdbus"' '"gdbxs"'
           # rename physical files to match renamed references
