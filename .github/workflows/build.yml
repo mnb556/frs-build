@@ -26,32 +26,36 @@ jobs:
           git config --global --add safe.directory '*'
           git clone --depth 1 --branch 17.24.3 --recurse-submodules --shallow-submodules -j4 https://github.com/frida/frida.git
 
-      - name: Patch anti-detection strings
+      - name: Patch anti-detection strings (repo-wide, keep self-consistent)
         run: |
           cd frida
-          # thread names (target process /proc/<pid>/task/*/comm)
-          grep -rl "gum-js-loop" frida-gum frida-core 2>/dev/null | xargs -r sed -i 's/gum-js-loop/gxm-js-loop/g'
-          grep -rl "pool-frida" frida-gum frida-core 2>/dev/null | xargs -r sed -i 's/pool-frida/pool-fnida/g'
-          grep -rl '"gmain"' glib 2>/dev/null | xargs -r sed -i 's/"gmain"/"gmxin"/g'
-          grep -rl '"gdbus"' glib frida-core 2>/dev/null | xargs -r sed -i 's/"gdbus"/"gdbxs"/g'
-          # runtime artifact names (agent so, helper, temp dirs, ports)
-          grep -rl "frida-agent" frida-core frida-gum 2>/dev/null | xargs -r sed -i 's/frida-agent/fnida-agent/g'
-          grep -rl "frida-server" frida-core frida-gum 2>/dev/null | xargs -r sed -i 's/frida-server/fnida-server/g'
-          grep -rl "frida-helper" frida-core 2>/dev/null | xargs -r sed -i 's/frida-helper/fnida-helper/g'
-          grep -rl "re\.frida\." frida-core 2>/dev/null | xargs -r sed -i 's/re\.frida\./re.fnida./g'
-          grep -rl "frida_agent_main" frida-core frida-gum 2>/dev/null | xargs -r sed -i 's/frida_agent_main/fnida_agent_main/g'
-          echo "patched:"; grep -rn "gxm-js-loop\|fnida-agent" --include="*.c" --include="*.cpp" -l | head -5
+          X() { grep -rl --exclude-dir=.git "$1" . 2>/dev/null | xargs -r sed -i "s/$1/$2/g"; }
+          X "gum-js-loop" "gxm-js-loop"
+          X "pool-frida" "pool-fnida"
+          X "frida-agent" "fnida-agent"
+          X "frida-helper" "fnida-helper"
+          X "frida-server" "fnida-server"
+          X "frida_agent_main" "fnida_agent_main"
+          X "re\.frida\." "re.fnida."
+          X '"gmain"' '"gmxin"'
+          X '"gdbus"' '"gdbxs"'
+          echo "verify:"; grep -rn "fnida-server-android" Makefile | head -2
 
       - name: Build frida-server android-arm64
         run: |
           cd frida
-          make frida-server-android-arm64 -j$(nproc) V=99 2>&1 | tail -40 || (make frida-server-android-arm64 -j$(nproc); ls build/)
-          ls -la build/frida-android-arm64/bin/ || find . -name "frida-server*" -path "*bin*"
+          make fnida-server-android-arm64 -j$(nproc) 2>&1 | tail -30
+          find . -name "fnida-server*" -path "*bin*" -o -name "frida-server*" -path "*bin*" | head -5
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+      - name: Collect binary
+        run: |
+          B=$(find frida/build -name "fnida-server" -type f | head -1)
+          [ -z "$B" ] && B=$(find frida/build -name "*server*" -type f | grep -E "bin/" | head -1)
+          echo "found: $B"
+          cp "$B" ./fnida-server-arm64
+
+      - uses: actions/upload-artifact@v4
         with:
           name: frida-server-patched-arm64
-          path: |
-            frida/build/frida-android-arm64/bin/frida-server
+          path: ./fnida-server-arm64
           if-no-files-found: error
