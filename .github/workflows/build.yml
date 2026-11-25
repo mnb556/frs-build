@@ -71,9 +71,10 @@ jobs:
 
       - name: Collect binary
         run: |
-          B=$(find frida/build -name "fnida-server" -type f | grep -E "bin/" | head -1)
-          [ -z "$B" ] && B=$(find frida/build -name "*server*" -type f | grep -E "bin/" | head -1)
+          B=$(find frida/build/subprojects/frida-core/server -maxdepth 1 -name "fnida-server" -type f | head -1)
+          [ -z "$B" ] && B=$(find frida/build -path "*node_modules*" -prune -o -name "fnida-server" -type f -print | head -1)
           echo "found: $B"
+          file "$B"
           cp "$B" ./fnida-server-arm64
 
       - uses: actions/upload-artifact@v4
