@@ -44,6 +44,16 @@ jobs:
           X "get_frida_compiler" "get_fnida_compiler"
           X "re\/frida\/" "re\/fnida\/"
           X "package re.frida" "package re.fnida"
+          # binary-patch prebuilt dex (equal-length replace keeps dex string pool valid)
+          find . -name "*.dex" -type f | xargs -r python3 -c "
+import sys, pathlib
+for p in sys.argv[1:]:
+    f = pathlib.Path(p)
+    b = f.read_bytes()
+    b = b.replace(b're/frida/', b're/fnida/').replace(b're.frida', b're.fnida')
+    f.write_bytes(b)
+    print('dex patched:', p)
+"
           X "frida-compiler" "fnida-compiler"
           X "frida-gadget" "fnida-gadget"
           X '"gmain"' '"gmxin"'
