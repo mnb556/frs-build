@@ -1,0 +1,57 @@
+name: build-frida-server
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL || true
+          df -h /
+
+      - name: Install deps
+        run: |
+          sudo apt-get update && sudo apt-get install -y build-essential ccache
+          pip3 install meson ninja
+
+      - name: Clone frida 17.24.3
+        run: |
+          git config --global --add safe.directory '*'
+          git clone --depth 1 --branch 17.24.3 --recurse-submodules --shallow-submodules -j4 https://github.com/frida/frida.git
+
+      - name: Patch anti-detection strings
+        run: |
+          cd frida
+          # thread names (target process /proc/<pid>/task/*/comm)
+          grep -rl "gum-js-loop" frida-gum frida-core 2>/dev/null | xargs -r sed -i 's/gum-js-loop/gxm-js-loop/g'
+          grep -rl "pool-frida" frida-gum frida-core 2>/dev/null | xargs -r sed -i 's/pool-frida/pool-fnida/g'
+          grep -rl '"gmain"' glib 2>/dev/null | xargs -r sed -i 's/"gmain"/"gmxin"/g'
+          grep -rl '"gdbus"' glib frida-core 2>/dev/null | xargs -r sed -i 's/"gdbus"/"gdbxs"/g'
+          # runtime artifact names (agent so, helper, temp dirs, ports)
+          grep -rl "frida-agent" frida-core frida-gum 2>/dev/null | xargs -r sed -i 's/frida-agent/fnida-agent/g'
+          grep -rl "frida-server" frida-core frida-gum 2>/dev/null | xargs -r sed -i 's/frida-server/fnida-server/g'
+          grep -rl "frida-helper" frida-core 2>/dev/null | xargs -r sed -i 's/frida-helper/fnida-helper/g'
+          grep -rl "re\.frida\." frida-core 2>/dev/null | xargs -r sed -i 's/re\.frida\./re.fnida./g'
+          grep -rl "frida_agent_main" frida-core frida-gum 2>/dev/null | xargs -r sed -i 's/frida_agent_main/fnida_agent_main/g'
+          echo "patched:"; grep -rn "gxm-js-loop\|fnida-agent" --include="*.c" --include="*.cpp" -l | head -5
+
+      - name: Build frida-server android-arm64
+        run: |
+          cd frida
+          make frida-server-android-arm64 -j$(nproc) V=99 2>&1 | tail -40 || (make frida-server-android-arm64 -j$(nproc); ls build/)
+          ls -la build/frida-android-arm64/bin/ || find . -name "frida-server*" -path "*bin*"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frida-server-patched-arm64
+          path: |
+            frida/build/frida-android-arm64/bin/frida-server
+          if-no-files-found: error
